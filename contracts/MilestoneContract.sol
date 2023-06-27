@@ -50,7 +50,6 @@ contract MilestoneContract {
         string dueDate,
         uint numberRevisions,
         uint msId
-
     );
 
     function addMilestone(
@@ -107,5 +106,50 @@ contract MilestoneContract {
         Milestone storage ms = milestones[_id];
         ms.ms_req.state = State.Completed;
         // milestones[_id]=ms;--> This may not req, have to check
+    }
+
+    // Approve MS status -> 1. Accept and payout function will call 2. Reject and State change to rework.
+    function approveMS_status(
+        uint _id,
+        bool _val,
+        address payable provider_address
+    ) public returns (bool approvedStatus, string memory message) {
+        // Purchaser will Approve Provider request
+        for (uint i = 0; i < milestonesList.length; i++) {
+            if (milestonesList[i].ms_req.msId == _id && _val == true) {
+                // Call fund transfer function
+                address contractAddress = address(this);
+                uint bal = (milestonesList[i].budget) * (10 ** 8);
+                provider_address.transfer(
+                    (contractAddress.balance) - (contractAddress.balance - bal)
+                );
+
+                return (true, "Fund transfer successfully ");
+            } else if (milestonesList[i].ms_req.msId == _id && _val == false) {
+                if (
+                    milestonesList[i].ms_req.revisionCounter <
+                    milestonesList[i].numberRevisions
+                ) {
+                    //Revision counter will increase---> Array
+                    milestonesList[i].ms_req.revisionCounter =
+                        milestonesList[i].ms_req.revisionCounter +
+                        1;
+                    milestonesList[i].ms_req.state = State.Rework;
+
+                    //Revision counter will increase---> Map
+                    Milestone storage ms = milestones[_id];
+                    ms.ms_req.revisionCounter = ms.ms_req.revisionCounter +1;
+                    ms.ms_req.state=State.Rework;
+
+                    return (true, "MS status change to rework");
+                } else {
+                    // Penalty calculation function will call
+                    // Need to add more functionalities
+                    return (true, "Penalty calculation function called");
+                }
+            }
+        }
+
+        return (false, "MS id not found ");
     }
 }
