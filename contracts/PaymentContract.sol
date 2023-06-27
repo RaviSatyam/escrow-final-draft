@@ -26,6 +26,7 @@ contract PaymentContract is HederaTokenService{
 
       // require(providerAddress == _providerAddress, "Address doesn't match");
       // contract_address = payable(this);
+     // uint256 amount=_amount*(10**8);
       uint256 price = contract_address.balance - (contract_address.balance - _amount);
       _providerAddress.transfer(price);
 
@@ -33,26 +34,26 @@ contract PaymentContract is HederaTokenService{
     }
 
 
-    // Extra Funds returned to the Purchaser by Escrow SC
+    // // Extra Funds returned to the Purchaser by Escrow SC
     function releaseFreeBalance(address payable _purhaserAddress,address payable contract_address) public {
       // contract_address = payable(this);
      uint256 _amount = contract_address.balance;
       _purhaserAddress.transfer(_amount);
     }
 
-    // Allocated Funds to 3rd Party
-    function releaseFunds(address payable _creditAddress, address payable contract_address) public{
+    // // Allocated Funds to 3rd Party
+    // function releaseFunds(address payable _creditAddress, address payable contract_address) public{
 
-      // contract_address = payable(this);
-     uint256 _amount = contract_address.balance;
-      _creditAddress.transfer(_amount);
-    }
+    //   // contract_address = payable(this);
+    //  uint256 _amount = contract_address.balance;
+    //   _creditAddress.transfer(_amount);
+    // }
 
 
-    //============================================ 
-    // CHECKING THE HBAR BALANCE OF THE CONTRACT
-    //============================================ 
-    function getBalance() public view returns (uint) {
-        return address(this).balance;
-    }
+    // //============================================ 
+    // // CHECKING THE HBAR BALANCE OF THE CONTRACT
+    // //============================================ 
+    // function getBalance() public view returns (uint) {
+    //     return address(this).balance;
+    // }
 }

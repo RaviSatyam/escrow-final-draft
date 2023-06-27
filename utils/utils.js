@@ -119,6 +119,31 @@ async function createEscrowContractId(bytecodeFileId,gasLimit,client,providerId,
     return [contractID, contractAddress];
 
 }
+async function createPaymentContractId(bytecodeFileId,gasLimit,client) {
+    console.log("################### Calling createContractId function #######################################");
+    // Instantiate the contract instance
+    const contractTx = await new ContractCreateTransaction()
+        //Set the file ID of the Hedera file storing the bytecode
+        .setBytecodeFileId(bytecodeFileId)
+        //Set the gas to instantiate the contract
+        .setGas(gasLimit);
+    //Submit the transaction to the Hedera test network
+    const contractResponse = await contractTx.execute(client);
+
+    //Get the receipt of the file create transaction
+    const contractReceipt = await contractResponse.getReceipt(client);
+
+    //Get the smart contract ID
+    const contractID = contractReceipt.contractId;
+
+    //Log the smart contract ID
+    // console.log("The smart contract ID is " + contractID);
+
+    const contractAddress = contractID.toSolidityAddress();
+
+    return [contractID, contractAddress];
+
+}
 
 
              //####################################################################//
@@ -390,7 +415,39 @@ async function contractExecuteNoFcn(cId, gasLim, amountHbar,client) {
 	const contractExecuteRx = await contractExecuteSubmit.getReceipt(client);
 	return contractExecuteRx;
 }
+async function hbarTransferFcn(purchaserId, contractAddress,purchaserPvKey,amount,client) {
+    const transferTx = new TransferTransaction()
+        .addHbarTransfer(purchaserId, new Hbar(-amount))
+        .addHbarTransfer(contractAddress, new Hbar(amount))
+        .freezeWith(client);
+    const transferSign = await transferTx.sign(purchaserPvKey);
+    const transferSubmit = await transferSign.execute(client);
+    const transferRx = await transferSubmit.getReceipt(client);
+    return transferRx;
+}
 
+async function contractBalanceCheckerFcn(contractId,client) {
+	const contractQueryTx = new ContractCallQuery()
+		.setContractId(contractId)
+		.setGas(100000)
+		.setFunction("getBalance");
+	const contractQuerySubmit = await contractQueryTx.execute(client);
+	const contractQueryResult = contractQuerySubmit.getUint256(0);
 
-module.exports={createByteCodeFileId,createContractFactoryContractId,contractParamsBuilderFcnMS,contractExecuteFcn,
-    contractParamsBuilderFcn,addMS_details,getMS_details,callFunction,queryBalance,contractExecuteNoFcn,showContractBalanceFcn,createEscrowContractId}
+	const cCheck = await new ContractInfoQuery().setContractId(contractId).execute(client);
+	return [contractQueryResult, cCheck];
+}
+
+async function payOut(contractId,client,_providerAddress,_amount,contract_address){
+	const contractQueryTx = new ContractExecuteTransaction()
+		.setContractId(contractId)
+		.setGas(100000)
+		.setFunction("payout",new ContractFunctionParameters().addAddress(_providerAddress.toSolidityAddress()).addUint256(_amount).addAddress(contract_address));
+	const contractQuerySubmit = await contractQueryTx.execute(client);
+	const contractQueryResult = contractQuerySubmit.getReceipt(client);
+
+	return contractQueryResult;
+}
+
+module.exports={createByteCodeFileId,createContractFactoryContractId,contractParamsBuilderFcnMS,contractExecuteFcn,contractBalanceCheckerFcn,payOut,createPaymentContractId,
+    contractParamsBuilderFcn,addMS_details,getMS_details,callFunction,queryBalance,contractExecuteNoFcn,showContractBalanceFcn,createEscrowContractId,hbarTransferFcn}

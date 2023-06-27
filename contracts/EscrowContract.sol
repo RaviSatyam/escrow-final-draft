@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
+import "./PaymentContract.sol";
 
-contract EscrowContract {
+contract EscrowContract is PaymentContract {
 
     //Purchaser, Provider and MO addresses
     address payable public purchaser_address;
     address payable public provider_address;
     address payable public mo_address;
-    address public contract_address=address(this);
+    address payable public contract_address = payable(address(this));
 
     
     // address public contract_address = address(this);
    // uint256 public balance1 = 100;
-    uint256 public allocatedBalance;
-
-   receive() external payable {}
-
-  fallback() external payable {}
+   // uint256 public allocatedBalance;
 
 
     // Constructor with arguments 
@@ -45,6 +42,9 @@ contract EscrowContract {
         require(msg.sender == mo_address);
         _;
     }
+//   function getBalance() public view returns (uint) {
   
+//         return address(this).balance;
 
+// }
 }
