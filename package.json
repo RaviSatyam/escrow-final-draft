@@ -17,7 +17,11 @@
 
     "add_Ms": "node ./script/4_rs_addMS_newContract.js",
 
-    "getMS_info_from_mirror_decodeEvent": "node ./script/5_rs_getMS_info_from_mirrorNode.js"
+    "getMS_info_from_mirror_decodeEvent": "node ./script/5_rs_getMS_info_from_mirrorNode.js",
+
+    "get_All_MS_List": "node ./script/6_rs_getAll_MS.js",
+
+    "get_MS_by_Id": "node ./script/7_rs_getMs_by_Id_changeState.js"
   },
   "author": "",
   "license": "ISC",

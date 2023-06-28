@@ -28,7 +28,7 @@ async function main() {
 
         console.log(`\n- Calling Add MS ......`);
         // STEP 1 =====================================
-        const msParams = await utils.contractParamsBuilderMS(1001,"file_hash","MS_Title_1",3,"28-06-2023","04-07-2023",
+        const msParams = await utils.contractParamsBuilderMS(102,"file_hash2","MS_Title_2",3,"28-06-2023","04-07-2023",
         3,2);
         
         const gasLimit = 10000000;

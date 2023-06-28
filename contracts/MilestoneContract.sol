@@ -53,7 +53,7 @@ contract MilestoneContract {
     );
 
     function addMilestone(
-        uint msId,
+        uint _msId,
         string memory _descriptionFileHash,
         string memory _title,
         uint _budget,
@@ -70,7 +70,7 @@ contract MilestoneContract {
         ms.numberRevisions = _numberRevisions;
 
         MilestoneRequired memory msreq;
-        msreq.msId = msId; // need to modification and call id generator function
+        msreq.msId = _msId; // need to modification and call id generator function
         msreq.descriptionFileLink = "www.google.com";
         msreq.state = State.Inprogress;
         msreq.isApproved = false;
@@ -85,13 +85,13 @@ contract MilestoneContract {
             _initDate,
             _dueDate,
             _numberRevisions,
-            msId
+            _msId
         );
 
         // emit trackState(msreq.state);
-        // ms.ms_req = msreq;
+         ms.ms_req = msreq;
 
-        milestones[msId] = ms;
+        milestones[_msId] = ms;
 
         milestonesList.push(ms);
     }
@@ -152,4 +152,21 @@ contract MilestoneContract {
 
         return (false, "MS id not found ");
     }
+
+    // Get MS by Id
+    function getMilestoneById(uint _Id) public view returns (Milestone memory ms) {
+        for (uint i = 0; i < milestonesList.length; i++) {
+            if(milestonesList[i].ms_req.msId==_Id){
+                return milestonesList[i];
+            }
+        }
+        
+    }
+
+    // Get all MS
+    function getAllMS() public view returns (Milestone[] memory msList) {
+        return milestonesList;
+    }
+
+    
 }

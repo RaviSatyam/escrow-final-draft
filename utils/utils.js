@@ -129,7 +129,7 @@ async function contractParamsBuilderMS(msId,fileHash,msTitle,budget,initDate,due
             .addUint256(msId)
             .addString(fileHash)
             .addString(msTitle)
-            .addUint256(budget)
+            .addUint256(budget * 1e8)
             .addString(initDate)
             .addString(dueDate)
             .addUint256(noRevision);
@@ -183,13 +183,13 @@ async function contractExecuteFcn(cId, gasLim, fcnName, params,client,section) {
 //
 
 
-async function contractParamsBuilderFcn(id, name, resolveTime, budget, noRevision, section) {
+async function contractParamsBuilderFcn( name, resolveTime, budget, noRevision, section) {
     let builtParams = [];
     if (section === 2) {
         builtParams = new ContractFunctionParameters()
             // .addAddress(aId.toSolidityAddress())
             // .addAddress(tId.toSolidityAddress());
-            .addUint256(id)
+            //.addUint256(id)
             .addString(name)
             .addUint256(resolveTime)
             .addUint256(budget * 1e8)
@@ -308,6 +308,26 @@ async function decodeFunctionResult(functionName, resultAsBytes, abi) {
 }
 
 
+// Call function
+
+async function callFunction(functionName, parameters, gas, contractId, abi,client) {
+
+    // generate function call with function name and parameters
+    const functionCallAsUint8Array = await encodeFunctionCall(functionName, parameters, abi);
+
+    // execute the transaction
+    const transaction = await new ContractExecuteTransaction()
+        .setContractId(contractId)
+        .setFunctionParameters(functionCallAsUint8Array)
+        .setGas(gas)
+        .execute(client);
+    //get receipt
+    const receipt = await transaction.getReceipt(client);
+   
+    return receipt.status;
+}
+
+
 
 module.exports={createByteCodeFileId,createContractFactoryContractId,contractParamsBuilderFcnMS,contractExecuteFcn,
-    contractParamsBuilderFcn,addMS_details,getMS_details,contractParamsBuilderMS}
+    contractParamsBuilderFcn,addMS_details,getMS_details,contractParamsBuilderMS,callFunction}
