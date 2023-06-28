@@ -88,8 +88,8 @@ contract MilestoneContract {
             msId
         );
 
-        emit trackState(msreq.state);
-        ms.ms_req = msreq;
+        // emit trackState(msreq.state);
+        // ms.ms_req = msreq;
 
         milestones[msId] = ms;
 

@@ -7,7 +7,16 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+
+    "deploy_Contract_Factory": "node ./script/1_rs_deployContractFactory.js",
+
+    "create_new_escrow_contractId": "node ./script/2_rs_create_escrow_contractId.js",
+
+    "decode_newly_created_escrow_contractId": "node ./script/3_rs_decode_new_Created_Escrow_ContractId.js",
+
+    "add_Ms": "node ./script/4_addMS_newContract.js",
+
+    "getMS_info_from_mirror_decodeEvent": "node ./script/5_getMS_info_from_mirrorNode.js"
   },
   "author": "",
   "license": "ISC",
