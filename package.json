@@ -1,4 +1,5 @@
 {
+  
   "name": "escrow-final",
   "version": "1.0.0",
   "description": "",
@@ -14,9 +15,9 @@
 
     "decode_newly_created_escrow_contractId": "node ./script/3_rs_decode_new_Created_Escrow_ContractId.js",
 
-    "add_Ms": "node ./script/4_addMS_newContract.js",
+    "add_Ms": "node ./script/4_rs_addMS_newContract.js",
 
-    "getMS_info_from_mirror_decodeEvent": "node ./script/5_getMS_info_from_mirrorNode.js"
+    "getMS_info_from_mirror_decodeEvent": "node ./script/5_rs_getMS_info_from_mirrorNode.js"
   },
   "author": "",
   "license": "ISC",
