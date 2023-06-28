@@ -168,5 +168,16 @@ contract MilestoneContract {
         return milestonesList;
     }
 
+    // Penalty calculation--> 1.Based on number of revision counter
+
+    function penaltyCalculation(uint _Id) public view returns (uint penalty){
+        for (uint i = 0; i < milestonesList.length; i++) {
+            if(milestonesList[i].ms_req.msId==_Id){
+                uint n=(milestonesList[i].numberRevisions)-(milestonesList[i].ms_req.revisionCounter);
+                return n*100000000;
+            }
+        }
+    }
+
     
 }
