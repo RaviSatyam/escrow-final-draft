@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-struct Blocker{
+struct Milestone{
     int Id;
     string name;
     string email;
