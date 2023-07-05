@@ -1,4 +1,4 @@
-import { Controller,Get ,Post,Body, ParseIntPipe,Put, Param, NotFoundException} from '@nestjs/common';
+import { Controller,Get ,Post,Body, ParseIntPipe,Put, Param, NotFoundException,Delete} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Purchaser,Milestone ,Prisma} from '@prisma/client';
 
@@ -78,25 +78,6 @@ export class PurchaserController {
     }
 
 
-    // @Put(':id')
-
-    // async update(
-
-    //     @Param('id', ParseIntPipe) id: number,
-
-    //     @Body() data: Prisma.PurchaserUpdateInput,
-
-    // ): Promise<Purchaser> {
-
-    //     return await this.prisma.purchaser.update({
-
-    //         where: { id },
-
-    //         data,
-
-    //     });
-
-    // }
 
     //---------------------
    
@@ -145,9 +126,63 @@ export class PurchaserController {
     if (!purchaser) {
       throw new NotFoundException('Purchaser not found');
     }
+    console.log(purchaser.milestones)
+
+    // Adding purchaser Info to onchain
+    // const msParams = await utils.contractParamsBuilderFcnMS(purchaser.id,purchaser.email,purchaser.projectName,2);
+    
+    // const gasLimit = 10000000;
+    // const purchaser_Status = await utils.contractExecuteFcn(contractId, gasLimit, "setPurchaserInfo", msParams, client, 2);
+
+    // console.log(`\n Added purchaser with Status :${purchaser_Status}`);
+
+
+
+    // Adding milestones details to onchain
+
+    for (let i = 0; i < purchaser.milestones.length; i++) {
+
+            const msParams = await utils.contractParamsBuilderMS(purchaser.milestones[i].id,purchaser.milestones[i].budget,
+                purchaser.milestones[i].description,purchaser.milestones[i].no_revision,2);
+
+            const gasLimit = 10000000;
+            const addMS_Status = await utils.contractExecuteFcn(contractId, gasLimit, "setMilestoneDetails", msParams, client, 2);
+
+            console.log(`\n Add MS Status :${addMS_Status}`);
+
+        }
+
 
     return purchaser.milestones;
   }
+
+
+  // Delete all data from off chain table
+
+  
+  @Delete(':id')
+async deletePurchaserById(@Param('id') id: number): Promise<Purchaser> {
+  const Id=Number(id)
+  const purchaser = await this.prisma.purchaser.findUnique({
+    where: { id:Id },
+    include: { milestones: true },
+  });
+
+  if (!purchaser) {
+    throw new NotFoundException('Purchaser not found');
+  }
+
+  const milestoneIds = purchaser.milestones.map((m) => m.id);
+
+  await this.prisma.milestone.deleteMany({
+    where: { id: { in: milestoneIds } },
+  });
+
+  return this.prisma.purchaser.delete({
+    where: { id:Id },
+  });
+}
+
 
 
 }
