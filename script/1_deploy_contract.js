@@ -16,7 +16,7 @@ const client = Client.forTestnet().setOperator(operatorId, operatorKey);
 
 
 
-let contractCompiled = require("../build/contracts/BlockerContract.json");
+let contractCompiled = require("../build/contracts/TestContract.json");
 const bytecode = contractCompiled.bytecode;
 
 

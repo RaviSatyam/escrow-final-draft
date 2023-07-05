@@ -13,7 +13,7 @@ const {
 // Import required functions from mirror_node folder
 const utils = require('../utils/mirror_utils')
 
-let contractCompiled = require("../build/contracts/BlockerContract.json");
+let contractCompiled = require("../build/contracts/TestContract.json");
 const abi = contractCompiled.abi;
 
 const contractId = process.env.NEW_CONTRACT_ID;
@@ -29,7 +29,7 @@ console.log(contractId);
 
   const logData = await utils.getLogsTxnDetails(url);
 
-  const eventName = 'blockerList';
+  const eventName = 'milestoneList';
 
  // console.log(logData)
 

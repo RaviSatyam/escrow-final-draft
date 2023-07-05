@@ -72,6 +72,9 @@ async function createContractFactoryContractId(bytecodeFileId,gasLimit,client) {
         .setBytecodeFileId(bytecodeFileId)
         //Set the gas to instantiate the contract
         .setGas(gasLimit);
+            
+        // .setConstructorParameters(new ContractFunctionParameters().addInt256(id)
+        // .addString(name).addString(email).addString(project_name));
 
     //Submit the transaction to the Hedera test network
     const contractResponse = await contractTx.execute(client);
@@ -98,14 +101,15 @@ async function createContractFactoryContractId(bytecodeFileId,gasLimit,client) {
 
 // To set parameters
 
-async function contractParamsBuilderFcnMS(provider,mo,purchaser,creditAddress, section) {
+
+async function contractParamsBuilderFcnMS(id,email,projectName, section) {
+    console.log("Inside thepurchaser  Params fun ")
     let builtParams = [];
     if (section === 2) {
         builtParams = new ContractFunctionParameters()
-            .addAddress(provider.toSolidityAddress())
-            .addAddress(mo.toSolidityAddress())
-            .addAddress(purchaser.toSolidityAddress())
-            .addAddress(creditAddress.toSolidityAddress());
+            .addInt256(id)
+            .addString(email)
+            .addString(projectName);
        
     } else if(section===3){
         builtParams = new ContractFunctionParameters()
@@ -122,14 +126,15 @@ async function contractParamsBuilderFcnMS(provider,mo,purchaser,creditAddress, s
 }
 // To set function parameters for add milestone 
 
-async function contractParamsBuilderMS(id,name,email,section) {
-    console.log("Inside the Params fun ")
+async function contractParamsBuilderMS(id,budget,description,no_revision,section) {
+    //console.log("Inside the Params fun ")
     let builtParams = [];
     if (section === 2) {
         builtParams = new ContractFunctionParameters()
             .addInt256(id)
-            .addString(name)
-            .addString(email);
+            .addInt256(budget)
+            .addString(description)
+            .addInt256(no_revision);
             // .addUint256(budget * 1e8)
             // .addString(initDate)
             // .addString(dueDate)
