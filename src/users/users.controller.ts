@@ -7,11 +7,13 @@ import { User } from '@prisma/client';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  //post api to add new user
   @Post()
   createUser(@Body() createUserDto: CreateUserDto): Promise<User> {
     return this.usersService.createUser(createUserDto);
   }
 
+  //get api to retrieve all users details
   @Get()
   getAllUsers(): Promise<User[]> {
     return this.usersService.getAllUsers();

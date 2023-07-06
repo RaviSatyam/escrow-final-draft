@@ -7,13 +7,20 @@ import { Milestone } from '@prisma/client';
 export class MilestonesController {
   constructor(private readonly milestonesService: MilestonesService) {}
 
-  @Post()
-  createMilestone(@Body() createMilestoneDto: CreateMilestoneDto): Promise<Milestone> {
-    return this.milestonesService.createMilestone(createMilestoneDto);
-  }
 
-  @Get(':projectId')
-  getMilestonesByProjectId(@Param('projectId') projectId: number): Promise<Milestone[]> {
-    return this.milestonesService.getMilestonesByProjectId(projectId);
-  }
+// Post api to add milestone based on project id
+@Post(':project_id')
+createMilestone(@Param('project_id') projectId: number, @Body() createMilestoneDto: CreateMilestoneDto): Promise<Milestone> {
+  const projectID=Number(projectId);
+  console.log("Hey",projectID)
+  return this.milestonesService.createMilestone(projectID, createMilestoneDto);
+}
+
+// Get api retrieve milestones details based on project id
+@Get(':project_id')
+getMilestonesByProjectId(@Param('project_id') projectId: number): Promise<Milestone[]> {
+  const projectID=Number(projectId);
+  return this.milestonesService.getMilestonesByProjectId(projectID);
+}
+
 }
