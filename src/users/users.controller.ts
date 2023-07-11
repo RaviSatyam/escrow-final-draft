@@ -3,6 +3,8 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { Milestone, User } from '@prisma/client';
 
+
+
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -36,6 +38,19 @@ export class UsersController {
     const milestones=this.usersService.getMilestonesByUserIdAndProjectId(userID,projectID);
     return milestones;
 }
+
+//===================== Escrow Creation ====================
+@Get('create/:userId/:projectId')
+  async createEscrow(@Param('userId') userId: number, @Param('projectId') projectId: number): Promise<Milestone[]> {
+    const userID=Number(userId);
+    const projectID=Number(projectId);
+    const milestones=this.usersService.createEscrow(userID,projectID);
+
+    // Create Instance of Escrow Contract
+
+    return milestones;
+}
+
 }
 
 

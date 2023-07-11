@@ -6,14 +6,9 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "deploy_Contract": "node ./script/1_deploy_contract.js",
-
+    "deploy_Factory_Contract": "node ./script/1_deploy_contractFactory.js",
     "get_blocker_list_mirror": "node ./script/2_allBlockers_mirror.js",
-
     "get_blocker_list": "node ./script/3_allBlockers_with_function.js",
-
-
-
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -34,6 +29,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@prisma/client": "^4.16.1",
     "dotenv": "^16.3.1",
+    "fs": "^0.0.1-security",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "truffle": "^5.10.1",

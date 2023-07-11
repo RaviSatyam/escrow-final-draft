@@ -13,6 +13,8 @@ const {
     FileCreateTransaction
 } = require("@hashgraph/sdk");
 
+const fs = require('fs');
+
 const Web3 = require('web3');
 //const web3 = new Web3;
 
@@ -95,6 +97,38 @@ async function createContractFactoryContractId(bytecodeFileId,gasLimit,client) {
 }
 
 
+// Function to deploy contract on hedera network and return contract Id
+
+async function createEscrowContractId(bytecodeFileId,gasLimit,params,client) {
+    console.log("################### Calling createContractId function #######################################");
+    // Instantiate the contract instance
+    const contractTx = await new ContractCreateTransaction()
+        //Set the file ID of the Hedera file storing the bytecode
+        .setBytecodeFileId(bytecodeFileId)
+        //Set the gas to instantiate the contract
+        .setGas(gasLimit)
+            
+        .setConstructorParameters(params);
+
+    //Submit the transaction to the Hedera test network
+    const contractResponse = await contractTx.execute(client);
+
+    //Get the receipt of the file create transaction
+    const contractReceipt = await contractResponse.getReceipt(client);
+
+    //Get the smart contract ID
+    const contractID = contractReceipt.contractId;
+
+    //Log the smart contract ID
+    // console.log("The smart contract ID is " + contractID);
+
+    const contractAddress = contractID.toSolidityAddress();
+
+    return [contractID, contractAddress];
+
+}
+
+
              //####################################################################//
              //   Functions related to set the params and add the data on hedera  //
 //#############################################################################################################
@@ -125,20 +159,26 @@ async function contractParamsBuilderFcnMS(id,email,projectName, section) {
     return builtParams;
 }
 // To set function parameters for add milestone 
+// uint _msId,
+// string memory _descriptionFileHash,
+// string memory _title,
+// uint _budget,
+// string memory _initDate,
+// string memory _dueDate,
+// uint _numberRevisions
 
-async function contractParamsBuilderMS(id,budget,description,no_revision,section) {
+async function contractParamsBuilderMS(msId,descriptionFileHash,title,budget,initDate,dueDate,noRevision,section) {
     //console.log("Inside the Params fun ")
     let builtParams = [];
     if (section === 2) {
         builtParams = new ContractFunctionParameters()
-            .addInt256(id)
-            .addInt256(budget)
-            .addString(description)
-            .addInt256(no_revision);
-            // .addUint256(budget * 1e8)
-            // .addString(initDate)
-            // .addString(dueDate)
-            // .addUint256(noRevision);
+            .addInt256(msId)
+            .addString(descriptionFileHash)
+            .addString(title)
+            .addInt256(budget * 1e8)
+            .addString(initDate)
+            .addString(dueDate)
+            .addInt256(noRevision);
        
     } else if(section===3){
         builtParams = new ContractFunctionParameters()
@@ -153,6 +193,33 @@ async function contractParamsBuilderMS(id,budget,description,no_revision,section
     }
     return builtParams;
 }
+
+async function contractParamsBuilderEscroContract(providerAddress,moAddress,purchaserAddress,creditAddress,section) {
+    //console.log("Inside the Params fun ")
+    let builtParams = [];
+    if (section === 2) {
+        builtParams = new ContractFunctionParameters()
+            .addAddress(providerAddress.toSolidityAddress())
+            .addAddress(moAddress.toSolidityAddress())
+            .addAddress(purchaserAddress.toSolidityAddress())
+            .addAddress(creditAddress.toSolidityAddress());
+       
+    } else if(section===3){
+        builtParams = new ContractFunctionParameters()
+        .addUint256(provider);
+    }
+    else if(section===4){
+        builtParams = new ContractFunctionParameters()
+        .addUint256(provider);
+    }
+            
+     else {
+    }
+    return builtParams;
+}
+
+
+
 
 
 // Contract execute function to add MS
@@ -333,7 +400,136 @@ async function callFunction(functionName, parameters, gas, contractId, abi,clien
     return receipt.status;
 }
 
+// Function to save data to file
+async function saveDataToFile(data,filePath) {
+    //const filePath = '../../.env';
+    fs.appendFile(filePath, data, (err) => {
+      if (err) {
+        console.error('Error writing data to file:', err);
+      } else {
+        console.log('Data saved to file successfully!');
+      }
+    });
+  }
+
+
+  // Function to read data from .env
+  async function readDataFromFile(filePath) {
+   // const filePath = '/path/to/your/.env'; // Replace with the correct directory path
+  
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        console.error('Error reading data from file:', err);
+      } else {
+        console.log('Data read from file:', data);
+      }
+    });
+  }
+
+//   // Function to read specific data
+//   async function readVariableFromFile(variableName,filePath) {
+//     //const filePath = '/path/to/your/.env'; // Replace with the correct directory path
+//     let name,value;
+//     fs.readFile(filePath, 'utf8', (err, data) => {
+//       if (err) {
+//         console.error('Error reading data from file:', err);
+//       } else {
+//         const lines = data.split('\n');
+//         for (const line of lines) {
+//            [name, value] = line.split('=');
+//           if (name === variableName) {
+//             console.log(`Value of ${variableName}:`, value);
+//             return value; // Exit the function after finding the variable
+//           }
+//         }
+//         console.log(`Variable ${variableName} not found in file.`);
+//       }
+//     });
+    
+//   }
+
+
+  ///
+  async function readVariableFromFile(variableName,filePath) {
+    //const filePath = '/path/to/your/.env'; // Replace with the correct directory path
+  
+    return new Promise((resolve, reject) => {
+      fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+          console.error('Error reading data from file:', err);
+          reject(err);
+        } else {
+          const lines = data.split('\n');
+          for (const line of lines) {
+            const [name, value] = line.split('=');
+            if (name === variableName) {
+              resolve(value);
+              return; // Exit the function after finding the variable
+            }
+          }
+          reject(`Variable ${variableName} not found in file.`);
+        }
+      });
+    });
+  }
+
+
+  // Update variable value in file
+  
+
+async function updateVariableValue(variableName, newValue, filePath) {
+  //const filePath = '/path/to/your/.env'; // Replace with the correct directory path
+
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading data from file:', err);
+      return;
+    }
+
+    const lines = data.split('\n');
+    let updatedContent = '';
+    let variableUpdated = false;
+
+    for (const line of lines) {
+      const [name, value] = line.split('=');
+
+      if (name === variableName) {
+        updatedContent += `${name}=${newValue}\n`;
+        variableUpdated = true;
+      } else {
+        updatedContent += `${name}=${value}\n`;
+      }
+    }
+
+    if (!variableUpdated) {
+      console.log(`Variable ${variableName} not found in file.`);
+      return;
+    }
+
+    fs.writeFile(filePath, updatedContent, 'utf8', (err) => {
+      if (err) {
+        console.error('Error writing data to file:', err);
+      } else {
+        console.log(`Variable ${variableName} updated successfully.`);
+      }
+    });
+  });
+}
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
 
 module.exports={createByteCodeFileId,createContractFactoryContractId,contractParamsBuilderFcnMS,contractExecuteFcn,
-    contractParamsBuilderFcn,addMS_details,getMS_details,contractParamsBuilderMS,callFunction}
+    contractParamsBuilderFcn,addMS_details,getMS_details,contractParamsBuilderMS,callFunction,contractParamsBuilderEscroContract,
+    createEscrowContractId,saveDataToFile,readVariableFromFile,updateVariableValue}
