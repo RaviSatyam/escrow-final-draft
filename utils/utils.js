@@ -225,6 +225,7 @@ async function contractParamsBuilderEscroContract(providerAddress,moAddress,purc
 // Contract execute function to add MS
 
 async function contractExecuteFcn(cId, gasLim, fcnName, params,client,section) {
+  console.log("Inside contractExecuteFcn")
     if(section===2){
 
         const contractExecuteTx = new ContractExecuteTransaction()

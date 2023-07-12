@@ -23,6 +23,6 @@ if (!projectExists) {
   throw new NotFoundException('Project not found');
 }
 
-return this.prisma.milestone.create({ data: { ...createMilestoneDto, project_id: projectId } });
+return this.prisma.milestone.create({ data: { ...createMilestoneDto, project_id: projectId } }); 
 }
 }

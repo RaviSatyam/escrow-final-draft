@@ -51,6 +51,18 @@ export class UsersController {
     return milestones;
 }
 
+//
+@Get('create_escrow/:userId/:projectId')
+  async createEscrowUsingFactory(@Param('userId') userId: number, @Param('projectId') projectId: number): Promise<Milestone[]> {
+    const userID=Number(userId);
+    const projectID=Number(projectId);
+    const milestones=this.usersService.createEscrowUsingFactory(userID,projectID);
+
+    // Create Instance of Escrow Contract
+
+    return milestones;
+}
+
 }
 
 

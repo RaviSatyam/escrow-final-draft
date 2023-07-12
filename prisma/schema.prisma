@@ -46,6 +46,7 @@ model Project {
   duration             DateTime
   deliverables         String
   category             String
+  project_contract_id  String?
   penalty              Float
   fund_transfer_type   String
   milestones           Milestone[]
@@ -78,7 +79,7 @@ model Milestone {
 }
 
 model Provider {
-  id          Int      @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   provider_id String  @unique
   name        String
   skill       String

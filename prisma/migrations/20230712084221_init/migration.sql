@@ -43,6 +43,7 @@ CREATE TABLE "Project" (
     "duration" TIMESTAMP(3) NOT NULL,
     "deliverables" TEXT NOT NULL,
     "category" TEXT NOT NULL,
+    "project_contract_id" TEXT,
     "penalty" DOUBLE PRECISION NOT NULL,
     "fund_transfer_type" TEXT NOT NULL,
     "user_id" INTEGER NOT NULL,
