@@ -6,7 +6,7 @@ import { Milestone, User } from '@prisma/client';
 
 // Importing all dependencies for hedera
 const utils = require('../../utils/utils.js');
-const mirror_utils=require('../../utils/mirror_utils.js');
+const mirror_utils = require('../../utils/mirror_utils.js');
 
 
 require("dotenv").config();
@@ -28,6 +28,7 @@ const client = Client.forTestnet().setOperator(operatorId, operatorKey);
 //Bytecode and ABI from json
 let contractCompiled = require("../../build/contracts/EscrowContract.json");
 const bytecode = contractCompiled.bytecode;
+const escrowABI = contractCompiled.abi;
 
 let contractFactoryCompiled = require("../../build/contracts/ContractFactory.json");
 const abi = contractFactoryCompiled.abi;
@@ -46,11 +47,31 @@ const moAccountId = AccountId.fromString(process.env.Account2_Id);
 //credit address
 const creditAccountId = AccountId.fromString(process.env.Account3_Id);
 
+// Define interface
+ interface MilestonesInfo {
+  descriptionFileHash: string;
+  title: string;
+ budget: string;
+  initDate: string;
+  dueDate: string;
+  numberRevisions: string;
+  msId: string;
+  
+}
+// string descriptionFileHash,
+// string title,
+// uint budget,
+// string initDate,
+// string dueDate,
+// int numberRevisions,
+// int msId
 
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) { 
+  }
+  
 
   // function to add new user
   async createUser(createUserDto: CreateUserDto): Promise<User> {
@@ -226,7 +247,7 @@ export class UsersService {
     const logData = await mirror_utils.getLogsTxnDetails(contractId);// getting log from mirror node
 
     const eventName = 'ContractCreated';
-  
+
     const decodedLog = await mirror_utils.decodeEventLogData(logData.logs[0], abi, eventName);// decoding the log data
     const newContractSolidityAddress = decodedLog.newContract;
 
@@ -237,35 +258,35 @@ export class UsersService {
     const new_contractId = ContractId.fromSolidityAddress(newContractSolidityAddress).toString();// retrieving new contract id from log
     console.log(new_contractId);
 
-   // Inserting the newly created escrow contract id into the user table
-  await this.prisma.user.update({
-    where: { user_id: userId },
-    data: {
-      contract_id: {
-        push: new_contractId,
+    // Inserting the newly created escrow contract id into the user table
+    await this.prisma.user.update({
+      where: { user_id: userId },
+      data: {
+        contract_id: {
+          push: new_contractId,
+        },
       },
-    },
-  });
+    });
 
-  // inserting the newly created contract id to the coressponding project table
+    // inserting the newly created contract id to the coressponding project table
 
-  await this.prisma.project.update({
-    where: { project_id: projectId },
-    data: {
-      project_contract_id: {
-        set: new_contractId,
+    await this.prisma.project.update({
+      where: { project_id: projectId },
+      data: {
+        project_contract_id: {
+          set: new_contractId,
+        },
       },
-    },
-  });
+    });
 
     // Adding offchain MS details to onchain
 
-    for (let i = 0; i < milestones.length; i++) { 
+    for (let i = 0; i < milestones.length; i++) {
 
       const msParams = await utils.contractParamsBuilderMS(milestones[i].milestone_id, milestones[i].description_file_hash,
         milestones[i].description, milestones[i].funds_allocated, milestones[i].start_date, milestones[i].completion_date,
         milestones[i].no_of_revision, 2);
-       
+
       const gasLimit = 10000000;
       const addMS_Status = await utils.contractExecuteFcn(new_contractId, gasLimit, "addMilestone", msParams, client, 2);
 
@@ -279,22 +300,110 @@ export class UsersService {
   }
 
 
-  // 
 
-  //function to get  user info-> project info and corresponding Ms
-  async getUserContractId(userId: number): Promise<String[]> {
-    const user = await this.prisma.user.findUnique({
-      where: { user_id: userId },
 
-    });
+  //function to get  user contract Id details
+  async getUserContractId(userId: number): Promise<string[]> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { user_id: userId },
+        select: {
+          contract_id: true,
+        },
 
-    return user.contract_id;
+      });
+      if (!user) {
+        throw new Error(`User with ID ${userId} not found.`);
+      }
+
+      return user.contract_id;
+
+    } catch (error) {
+      // Handle the error appropriately
+      console.error(`Error retrieving user contract ID: ${error.message}`);
+      throw new Error('Failed to retrieve user contract ID.');
+    }
+
+  }
+
+  // Function to retrieve recent MS detais from mirror node 
+  // Based on user id and contract id
+
+  async getMilestonesInfoFromMirrorNode(contract_Id: string): Promise<MilestonesInfo> {
+
+    // Decoding the newcEscrow-instance contract id from mirror node
+
+    const logData = await mirror_utils.getLogsTxnDetails(contract_Id);// getting log from mirror node
+
+    const eventName = 'milestoneList';
+    console.log(logData.logs);
+
+    const decodedLog = await mirror_utils.decodeEventLogData(logData.logs[0], escrowABI, eventName);// decoding the log data
+    console.log(decodedLog);
+
+    const milestonesInfo: MilestonesInfo = {
+      
+      descriptionFileHash: decodedLog.descriptionFileHash,
+      title: decodedLog.title,
+      budget:`${decodedLog.budget}`,
+      initDate:decodedLog.initDate,
+      dueDate:decodedLog.dueDate,
+      numberRevisions:`${decodedLog.numberRevisions}`,
+      msId:`${decodedLog.msId}`,
+    
+    };
+
+    console.log(decodedLog.msId,typeof(decodedLog.msId))
+    console.log(decodedLog.budget,typeof(decodedLog.budget))
+
+    return milestonesInfo;
   }
 
 
+  // Function to retrieve all MS detais from mirror node 
+  // Based on user id and contract id
 
+  async getAllMilestonesInfoFromMirrorNode(contract_Id: string): Promise<MilestonesInfo[]> {
+
+    // Decoding the newcEscrow-instance contract id from mirror node
+
+    let milestonesList: MilestonesInfo[]=[];
+
+    const logData = await mirror_utils.getLogsTxnDetails(contract_Id);// getting log from mirror node
+
+    const eventName = 'milestoneList';
+  
+
+    for(let i=0;i<logData.logs.length;i++){
+      const decodedLog = await mirror_utils.decodeEventLogData(logData.logs[i], escrowABI, eventName);// decoding the log data
+      console.log("================================");
+      console.log(decodedLog);
+      //Adding the decoded ms info into new interface
+    const milestonesInfo: MilestonesInfo = {
+      
+      descriptionFileHash: decodedLog.descriptionFileHash,
+      title: decodedLog.title,
+      budget:`${decodedLog.budget}`,
+      initDate:decodedLog.initDate,
+      dueDate:decodedLog.dueDate,
+      numberRevisions:`${decodedLog.numberRevisions}`,
+      msId:`${decodedLog.msId}`,
+    
+    };
+
+    milestonesList.push(milestonesInfo);
+
+    }
+    
+
+
+
+    return milestonesList;
+  }
 
 }
+
+
 
 
 
