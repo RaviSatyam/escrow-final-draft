@@ -401,6 +401,71 @@ export class UsersService {
     return milestonesList;
   }
 
+
+
+  //=================================
+
+  // function to change state of a milestone by provider
+  async changeMilestoneStatus(userId: number, projectId: number, msId: number): Promise<Milestone> {
+
+    // find the milestone whose id is msId
+    const milestone = await this.prisma.milestone.findUnique({
+      where: {
+        milestone_id: msId,
+      },
+    });
+    if (!milestone) {
+      throw new Error('Milestone not found');
+    }
+
+
+    // need to get the contract ID of the project to which this milestone belongs
+    // 1 - get the project id of the entered milestone (only if project id is not provided in the api)
+    // const project_id = await this.prisma.milestone.findUnique({
+    //   where: { milestone_id:msId },
+    // });
+
+    // 2- check if any contract id exists for that project
+    const project = await this.prisma.project.findUnique({
+      where: { project_id: projectId },
+      select: { project_contract_id: true },
+    });
+    const contract_id = project?.project_contract_id;
+    console.log(contract_id);
+
+    // change the state of the milestone by calling changeMsState
+    // const msparams = await utils.contractParamsBuilderFcn1(msId);
+    const gasLimit = 10000000;
+    // const addMS_Status = await utils.changeMsState(contract_id, gasLimit, "changeMS_state", msparams , client);
+    const change_ms_status = await utils.changeMsState(contract_id, gasLimit, msId, client);
+    console.log(`\n Change milestone status :${change_ms_status}`);
+    // const gasLimit = 10000000;
+
+
+
+    // get the milestone details
+    console.log(`\n Fetching the milestone details`);
+    const result = await utils.getMS_details('getAllMS', [], 10000000, contract_id, escrowABI, client);
+    console.log(result);
+
+    // push the new state in the db
+    try {
+      await this.prisma.milestone.update({
+        where: { milestone_id: msId },
+        data: {
+          status: 'Completed',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to update milestone status:', error);
+      throw new Error('Failed to update milestone status');
+    }
+
+
+    return milestone;
+
+  }
+
 }
 
 

@@ -518,7 +518,21 @@ async function updateVariableValue(variableName, newValue, filePath) {
 }
 
 
-
+// calling change milestone state change function 
+async function changeMsState(contractId, gasLim, id, client){
+  const contractExecuteTx = new ContractExecuteTransaction()
+  .setContractId(contractId)
+  .setGas(gasLim)
+  .setFunction(
+    "changeMS_state",
+    new ContractFunctionParameters().addInt256(id)
+  );
+const contractExecuteSubmit = await contractExecuteTx.execute(client);
+const contractExecuteRx = await contractExecuteSubmit.getReceipt(client);
+// console.log("The transaction status is " +receipt2.status.toString());
+console.log(`- Contract function call status: ${contractExecuteRx.status} \n`);
+return contractExecuteRx.status;
+}
   
   
   
@@ -533,4 +547,4 @@ async function updateVariableValue(variableName, newValue, filePath) {
 
 module.exports={createByteCodeFileId,createContractFactoryContractId,contractParamsBuilderFcnMS,contractExecuteFcn,
     contractParamsBuilderFcn,addMS_details,getMS_details,contractParamsBuilderMS,callFunction,contractParamsBuilderEscroContract,
-    createEscrowContractId,saveDataToFile,readVariableFromFile,updateVariableValue}
+    createEscrowContractId,saveDataToFile,readVariableFromFile,updateVariableValue,changeMsState}

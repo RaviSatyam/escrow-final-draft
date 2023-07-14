@@ -125,6 +125,17 @@ export class UsersController {
 
   }
 
+   // Provider side API to change milestone state and transfer payment.
+   @Get('provider/:user_id/:project_id/:ms_id')
+   async changeMilestoneStatus(@Param('user_id') user_id: number, @Param('project_id') project_id: number, @Param('ms_id') ms_id: number): Promise<Milestone> {
+     const userID = Number(user_id);
+     const projectID = Number(project_id);
+     const msID = Number(ms_id);
+     const milestones = this.usersService.changeMilestoneStatus(userID, projectID, msID);
+ 
+     return milestones;
+   }
+
 
 }
 
