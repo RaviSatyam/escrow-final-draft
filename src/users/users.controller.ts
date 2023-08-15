@@ -52,63 +52,44 @@ export class UsersController {
   }
 
   //===================== Escrow Creation ====================
-  @Get('create/:userId/:projectId')
-  async createEscrow(@Param('userId') userId: number, @Param('projectId') projectId: number): Promise<Milestone[]> {
-    const userID = Number(userId);
-    const projectID = Number(projectId);
-    const milestones = this.usersService.createEscrow(userID, projectID);
+  @Get('create')
+  async createEscrow(@Body('user_id') user_id: number, @Body('project_id') project_id: number) {
+  
 
+    const userID = Number(user_id);
+    const projectID = Number(project_id);
+    const ms = this.usersService.createEscrow(userID, projectID);
+    console.log("========")
+     console.log(ms);
     // Create Instance of Escrow Contract
 
-    return milestones;
+    return ms;
+      
+    
+  }
+
+  @Get('lockFunds')
+  async lockFunds(@Body('user_id') user_id: number, @Body('project_id') project_id: number) {
+    const userID = Number(user_id);
+    const projectID = Number(project_id);
+    const msg = this.usersService.lockFunds(userID, projectID);
+
+    // Create Instance of Escrow Contract
+    return msg;
   }
 
   //
-  @Get('create_escrow/:userId/:projectId')
+  @Get('createEscrow/:userId/:projectId')
   async createEscrowUsingFactory(@Param('userId') userId: number, @Param('projectId') projectId: number): Promise<Milestone[]> {
     const userID = Number(userId);
     const projectID = Number(projectId);
-    const milestones = this.usersService.createEscrowUsingFactory(userID, projectID);
+    const milestones = this.usersService.createEscrowUsingFactory(userID, projectID); 
 
     // Create Instance of Escrow Contract
 
     return milestones;
   }
 
-  //==== Doubt in decorator end point ======
-
-  // This is optimised code ---> Need to more optimisation
-  //get api to retrieve user details-> all project list and corressponding MS
-  // @Get(':userId')
-  // async getUserContractId(@Param('userId') userId: number): Promise<string[]> {
-
-  //   try {
-  //     const userID = Number(userId);
-  //     const contract_id = await this.usersService.getUserContractId(userID);
-  //     return contract_id;
-  //   } catch (error) {
-  //     console.error(`Error retrieving user contract ID: ${error.message}`);
-  //     throw new Error('Failed to retrieve user contract ID.');
-  //   }
-
-  // }
-
-  //====================
-  // @Get(':contractId')
-  // async getMilestonesInfoFromMirrorNode(@Param('contractId') contractId: string): Promise<MilestonesInfo> {
-
-  //   try {
-  //     //const userID = Number(userId);
-  //     const result = await this.usersService.getMilestonesInfoFromMirrorNode(contractId);
-  //     return result;
-  //   } catch (error) {
-  //     console.error(`Error retrieving user milestones: ${error.message}`);
-  //     throw new Error('Failed to retrieve user milestones.');
-  //   }
-
-  // }
-
-  //====================
 
 
   @Get(':contractId')
@@ -125,17 +106,67 @@ export class UsersController {
 
   }
 
-   // Provider side API to change milestone state and transfer payment.
-   @Get('provider/:user_id/:project_id/:ms_id')
-   async changeMilestoneStatus(@Param('user_id') user_id: number, @Param('project_id') project_id: number, @Param('ms_id') ms_id: number): Promise<Milestone> {
+   // Provider side API to change milestone state and transfer payment. 
+   @Post('change')
+   async changeMilestoneStatus(@Body('user_id') user_id: number, @Body('project_id') project_id: number, @Body('ms_id') ms_id: number) {
      const userID = Number(user_id);
      const projectID = Number(project_id);
      const msID = Number(ms_id);
-     const milestones = this.usersService.changeMilestoneStatus(userID, projectID, msID);
+     const msg = this.usersService.changeMilestoneStatus(userID, projectID, msID); 
  
-     return milestones;
+     return msg;
+   }
+ //@Get('purchaser/:user_id/:project_id/:ms_i')
+   // Provider side API to change milestone state and transfer payment. 
+   @Post('approve')
+   async approveMilestoneStatus(@Body('user_id') user_id: number, @Body('project_id') project_id: number, @Body('ms_id') ms_id: number){
+     const userID = Number(user_id);
+     const projectID = Number(project_id);
+     const msID = Number(ms_id);
+     const msg = this.usersService.approveMilestoneStatus(userID, projectID, msID);
+ 
+     return msg;  
    }
 
+   //========== NFT functionalities ========
+   @Post('createNFT')
+   async createNFT(@Body('user_id') user_id: number, @Body('project_id') project_id: number){
+     const userID = Number(user_id);
+     const projectID = Number(project_id);
+     const msg = this.usersService.createNFT(userID, projectID);
+ 
+     return msg;  
+   }
+
+   @Post('mintNFT')
+   async mintNFT(@Body('user_id') user_id: number, @Body('nft_id') nft_id: string){
+     const userID = Number(user_id);
+     const msg = this.usersService.mintNFT(userID, nft_id);
+ 
+     return msg;  
+   }
+
+   @Post('associateNFT')
+   async associateNFT(@Body('user_id') user_id: number, @Body('nft_id') nft_id: string,@Body('account_id') account_id: string,
+   @Body('account_key') account_key: string){
+     const userID = Number(user_id);
+     const msg = this.usersService.associateNFT(userID, nft_id,account_id,account_key);
+ 
+     return msg;  
+   }
+
+
+   @Post('transferNFT')
+   async transferNFT(@Body('user_id') user_id: number, @Body('nft_id') nft_id: string,@Body('sender_id') sender_id: string,
+   @Body('receiver_id') receiver_id: string,@Body('serial') serial: number,@Body('exchange_amount') exchange_amount: number,
+   @Body('sender_key')sender_key:string,@Body('receiver_key')receiver_key:string){
+     const userID = Number(user_id);
+     const msg = this.usersService.transferNFT(userID, nft_id,sender_id,receiver_id,serial,exchange_amount,sender_key,receiver_key);
+ 
+     return msg;  
+   }
+
+   //userId: number, tokenId: string, senderID: string, receiverID: string,serial:number,amount:number,receiverKey:string
 
 }
 

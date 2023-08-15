@@ -2,7 +2,10 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./MilestoneContract.sol";
-import "./PaymentContract.sol";
+//import "./PaymentContract.sol";
+import "../precompiled-contracts/HederaTokenService.sol";
+import "../precompiled-contracts/HederaResponseCodes.sol";
+
 
 contract EscrowContract is MilestoneContract {
     //Purchaser, Provider and MO addresses
@@ -24,4 +27,30 @@ contract EscrowContract is MilestoneContract {
         purchaser_address = _purchaser_address;
         creditAddress = _creditAddress;
     }
+
+     //============================================ 
+    // GETTING HBAR TO THE CONTRACT
+    //============================================ 
+    // Lock Funds to the Contract from the Purchaser
+    receive() external payable {}
+
+    fallback() external payable {}
+
+    //============================================ 
+    // CHECKING THE HBAR BALANCE OF THE CONTRACT
+    //============================================ 
+    function getBalance() public view returns (uint) {
+        return address(this).balance;
+    }
+
+    // Payout to provider
+    function payout( int _amount) public {
+        uint bal=uint(_amount)*(10**8);
+
+      provider_address.transfer(bal);
+
+
+    }
+
+    
 }

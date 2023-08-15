@@ -7,11 +7,12 @@ import { Milestone, User } from '@prisma/client';
 // Importing all dependencies for hedera
 const utils = require('../../utils/utils.js');
 const mirror_utils = require('../../utils/mirror_utils.js');
+const nft_utils = require('../../utils/nft_utils');
 
 
 require("dotenv").config();
 const {
-  AccountId,
+  AccountId, TransferTransaction,
   PrivateKey, ContractId,
   Client, ContractExecuteTransaction, ContractFunctionParameters
 } = require("@hashgraph/sdk");
@@ -24,6 +25,21 @@ const operatorId = AccountId.fromString(process.env.MY_ACCOUNT_ID); //purchaser
 const operatorKey = PrivateKey.fromString(process.env.MY_PRIVATE_KEY);
 
 const client = Client.forTestnet().setOperator(operatorId, operatorKey);
+
+// provider
+const providerId = AccountId.fromString(process.env.Account1_Id);
+const providerKey = PrivateKey.fromString(process.env.Account1_PVKEY);
+
+// 3rd person
+const thirdPersonId = AccountId.fromString(process.env.Account2_Id);
+const thirdPersonKey = PrivateKey.fromString(process.env.Account2_PVKEY);
+
+// 4th person
+const fourthPersonId = AccountId.fromString(process.env.Account3_Id);
+const fourthPersonKey = PrivateKey.fromString(process.env.Account3_PVKEY);
+
+const supplyKey = operatorKey;//PrivateKey.generateED25519();
+const adminKey = operatorKey; //PrivateKey.generateED25519();
 
 //Bytecode and ABI from json
 let contractCompiled = require("../../build/contracts/EscrowContract.json");
@@ -48,15 +64,15 @@ const moAccountId = AccountId.fromString(process.env.Account2_Id);
 const creditAccountId = AccountId.fromString(process.env.Account3_Id);
 
 // Define interface
- interface MilestonesInfo {
+interface MilestonesInfo {
   descriptionFileHash: string;
   title: string;
- budget: string;
+  budget: string;
   initDate: string;
   dueDate: string;
   numberRevisions: string;
   msId: string;
-  
+
 }
 // string descriptionFileHash,
 // string title,
@@ -69,9 +85,9 @@ const creditAccountId = AccountId.fromString(process.env.Account3_Id);
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) { 
+  constructor(private readonly prisma: PrismaService) {
   }
-  
+
 
   // function to add new user
   async createUser(createUserDto: CreateUserDto): Promise<User> {
@@ -123,96 +139,143 @@ export class UsersService {
 
 
   // function to get all milestones based on user id and project id
-  async createEscrow(userId: number, projectId: number): Promise<Milestone[]> {
-    const milestones = await this.prisma.milestone.findMany({
-      where: {
-        project: {
-          user_id: userId,
-          project_id: projectId,
-        },
-      },
-    });
+  async createEscrow(userId: number, projectId: number): Promise<{ success: boolean, msg: string, status_code: string, contract_id: string }> {
 
-    if (!milestones) {
-      throw new NotFoundException('Milestones not found');
+
+    try {
+      const milestones = await this.prisma.milestone.findMany({
+        where: {
+          project: {
+            user_id: userId,
+            project_id: projectId,
+          },
+        },
+      });
+
+      if (!milestones) {
+        throw new NotFoundException('Milestones not found');
+      }
+
+      // Create Instance of Escrow Contract
+
+      // STEP 1 =====================================
+      console.log(`\nSTEP 1 ===================================\n`);
+      console.log(`- File create bytecode...\n`);
+
+      const [bytecodeFileId, fileAppendStatus] = await utils.createByteCodeFileId(bytecode, client, operatorKey);
+      console.log(`\n bytecode file Id :${bytecodeFileId}`);
+
+      console.log(`\n File append status:${fileAppendStatus}`);
+
+      // STEP 2 ======================================
+
+      console.log(`\nSTEP 2 ===================================\n`);
+      console.log(`- Deploying contracts...\n`);
+      let gasLim = 10000000;
+      const params = await utils.contractParamsBuilderEscroContract(providerAccountId, moAccountId, operatorId, creditAccountId, 2);
+      [newContractId, newContractAddress] = await utils.createEscrowContractId(bytecodeFileId, gasLim, params, client);
+      console.log(`\n contract Id :${newContractId}`);
+      console.log(`\n contract address :${newContractAddress}`);
+      const cid = ContractId.fromSolidityAddress(newContractAddress).toString();
+
+
+      // Inserting the newly created escrow contract id into the user table
+      await this.prisma.user.update({
+        where: { user_id: userId },
+        data: {
+          contract_id: {
+            push: cid,
+          },
+        },
+      });
+
+      // inserting the newly created contract id to the coressponding project table 
+
+      await this.prisma.project.update({
+        where: { project_id: projectId },
+        data: {
+          project_contract_id: {
+            set: cid,
+          },
+        },
+      });
+
+      // Adding offchain MS details to onchain
+
+
+      for (let i = 0; i < milestones.length; i++) {
+
+        const msParams = await utils.contractParamsBuilderMS(milestones[i].milestone_id, milestones[i].description_file_hash,
+          milestones[i].description, milestones[i].funds_allocated, milestones[i].start_date, milestones[i].completion_date,
+          milestones[i].no_of_revision, 2);
+
+
+        const addMS_Status = await utils.contractExecuteFcn(newContractId, gasLim, "addMilestone", msParams, client, 2);
+
+        console.log(`\n Added MS Status with id ${milestones[i].milestone_id} is:${addMS_Status}`);
+
+      }
+
+      return { success: true, msg: `Escrow created successfully`, status_code: "200", contract_id: cid };
+
+    } catch (error) {
+      return { success: false, msg: error.message, status_code: "400", contract_id: "NA" };
     }
 
-    // Create Instance of Escrow Contract
 
-    // STEP 1 =====================================
-    console.log(`\nSTEP 1 ===================================\n`);
-    console.log(`- File create bytecode...\n`);
+  }
 
-    const [bytecodeFileId, fileAppendStatus] = await utils.createByteCodeFileId(bytecode, client, operatorKey);
-    console.log(`\n bytecode file Id :${bytecodeFileId}`);
+  // function to lock funds to contract
+  async lockFunds(userId: number, projectId: number): Promise<{
+    success: boolean, msg: string,
+    status_code: string, locked_funds_amount: string
+  }> {
 
-    console.log(`\n File append status:${fileAppendStatus}`);
-
-    // STEP 2 ======================================
-
-    console.log(`\nSTEP 2 ===================================\n`);
-    console.log(`- Deploying contracts...\n`);
-    let gasLim = 10000000;
-    const params = await utils.contractParamsBuilderEscroContract(providerAccountId, moAccountId, operatorId, creditAccountId, 2);
-    [newContractId, newContractAddress] = await utils.createEscrowContractId(bytecodeFileId, gasLim, params, client);
-    console.log(`\n contract Id :${newContractId}`);
-    console.log(`\n contract address :${newContractAddress}`);
-
-    // Reading the contract counter value from .env
-    const filePath = '.env';
-    let contractVal = 'CONTRACT_COUNTER';
-    let contractCounter;
-
-    await utils.readVariableFromFile(contractVal, filePath)
-      .then(value => {
-        contractCounter = parseInt(value) + 1;
-      })
-      .catch(error => {
-        console.error(error);
+    try {
+      const milestones = await this.prisma.milestone.findMany({
+        where: {
+          project: {
+            user_id: userId,
+            project_id: projectId,
+          },
+        },
       });
 
+      if (!milestones) {
+        throw new NotFoundException('Milestones not found');
+      }
 
-
-
-    // saving new contract id to file 
-    const data = `\nNEW_CONTRACT_ID_E${contractCounter}=${newContractId}`;
-    await utils.saveDataToFile(data, filePath);
-
-
-
-    // retrieving the contract id from .env
-    const variableName = `NEW_CONTRACT_ID_E${contractCounter}`;
-    await utils.readVariableFromFile(variableName, filePath).then(value => {
-      console.log(`Value of contractId ${variableName}: ${value}`);
-
-    })
-      .catch(error => {
-        console.error(error);
+      // check if any contract id exists for that project
+      const project = await this.prisma.project.findUnique({
+        where: { project_id: projectId },
+        select: { project_contract_id: true },
       });
 
-    //update contract counter value
+      const contract_id = project?.project_contract_id;
+      console.log("contract id", contract_id);
+      // Calculate to project funds
 
-    await utils.updateVariableValue(contractVal, contractCounter, filePath);
+      let totalFunds = 0;
+      for (let i = 0; i < milestones.length; i++) {
+        totalFunds += milestones[i].funds_allocated;
+      }
 
-
-    // Adding offchain MS details to onchain
-
-    for (let i = 0; i < milestones.length; i++) {
-
-      const msParams = await utils.contractParamsBuilderMS(milestones[i].milestone_id, milestones[i].description_file_hash,
-        milestones[i].description, milestones[i].funds_allocated, milestones[i].start_date, milestones[i].completion_date,
-        milestones[i].no_of_revision, 2);
 
       const gasLimit = 10000000;
-      const addMS_Status = await utils.contractExecuteFcn(newContractId, gasLimit, "addMilestone", msParams, client, 2);
 
-      console.log(`\n Add MS Status :${addMS_Status}`);
+      // Checking bal of contract
+      await utils.showContractBalanceFcn(contract_id, client)
 
+      const lockFundRx = await utils.hbarTransferFcn(operatorId, contract_id, operatorKey, totalFunds, client)
+
+      console.log("funds locked with status:", lockFundRx.status.toString());
+
+      await utils.showContractBalanceFcn(contract_id, client)
+
+      return { success: true, msg: `Funds locked to the contract successfully`, status_code: "200", locked_funds_amount: totalFunds + "Hbar" };
+    } catch (error) {
+      return { success: false, msg: error.message, status_code: "400", locked_funds_amount: "NA" };
     }
-
-
-
-    return milestones;
   }
 
 
@@ -246,17 +309,21 @@ export class UsersService {
 
     const logData = await mirror_utils.getLogsTxnDetails(contractId);// getting log from mirror node
 
+    console.log("log Data", logData)
+
     const eventName = 'ContractCreated';
 
     const decodedLog = await mirror_utils.decodeEventLogData(logData.logs[0], abi, eventName);// decoding the log data
     const newContractSolidityAddress = decodedLog.newContract;
 
-    //console.log(decodedLog);
+    console.log("Decode results :-----")
+    console.log(decodedLog);
 
-    console.log(newContractSolidityAddress);
+    console.log("new contract id address", newContractSolidityAddress);
 
-    const new_contractId = ContractId.fromSolidityAddress(newContractSolidityAddress).toString();// retrieving new contract id from log
-    console.log(new_contractId);
+    const new_contractId = ContractId.fromSolidityAddress(newContractSolidityAddress).toString()// retrieving new contract id from log
+    console.log("Newwwww---------")
+    console.log("new contract id", new_contractId);
 
     // Inserting the newly created escrow contract id into the user table
     await this.prisma.user.update({
@@ -278,6 +345,9 @@ export class UsersService {
         },
       },
     });
+
+    console.log("MS+++++++++")
+    console.log(milestones);
 
     // Adding offchain MS details to onchain
 
@@ -342,19 +412,19 @@ export class UsersService {
     console.log(decodedLog);
 
     const milestonesInfo: MilestonesInfo = {
-      
+
       descriptionFileHash: decodedLog.descriptionFileHash,
       title: decodedLog.title,
-      budget:`${decodedLog.budget}`,
-      initDate:decodedLog.initDate,
-      dueDate:decodedLog.dueDate,
-      numberRevisions:`${decodedLog.numberRevisions}`,
-      msId:`${decodedLog.msId}`,
-    
+      budget: `${decodedLog.budget}`,
+      initDate: decodedLog.initDate,
+      dueDate: decodedLog.dueDate,
+      numberRevisions: `${decodedLog.numberRevisions}`,
+      msId: `${decodedLog.msId}`,
+
     };
 
-    console.log(decodedLog.msId,typeof(decodedLog.msId))
-    console.log(decodedLog.budget,typeof(decodedLog.budget))
+    console.log(decodedLog.msId, typeof (decodedLog.msId))
+    console.log(decodedLog.budget, typeof (decodedLog.budget))
 
     return milestonesInfo;
   }
@@ -367,34 +437,34 @@ export class UsersService {
 
     // Decoding the newcEscrow-instance contract id from mirror node
 
-    let milestonesList: MilestonesInfo[]=[];
+    let milestonesList: MilestonesInfo[] = [];
 
     const logData = await mirror_utils.getLogsTxnDetails(contract_Id);// getting log from mirror node
 
     const eventName = 'milestoneList';
-  
 
-    for(let i=0;i<logData.logs.length;i++){
+
+    for (let i = 0; i < logData.logs.length; i++) {
       const decodedLog = await mirror_utils.decodeEventLogData(logData.logs[i], escrowABI, eventName);// decoding the log data
       console.log("================================");
       console.log(decodedLog);
       //Adding the decoded ms info into new interface
-    const milestonesInfo: MilestonesInfo = {
-      
-      descriptionFileHash: decodedLog.descriptionFileHash,
-      title: decodedLog.title,
-      budget:`${decodedLog.budget}`,
-      initDate:decodedLog.initDate,
-      dueDate:decodedLog.dueDate,
-      numberRevisions:`${decodedLog.numberRevisions}`,
-      msId:`${decodedLog.msId}`,
-    
-    };
+      const milestonesInfo: MilestonesInfo = {
 
-    milestonesList.push(milestonesInfo);
+        descriptionFileHash: decodedLog.descriptionFileHash,
+        title: decodedLog.title,
+        budget: `${decodedLog.budget}`,
+        initDate: decodedLog.initDate,
+        dueDate: decodedLog.dueDate,
+        numberRevisions: `${decodedLog.numberRevisions}`,
+        msId: `${decodedLog.msId}`,
+
+      };
+
+      milestonesList.push(milestonesInfo);
 
     }
-    
+
 
 
 
@@ -406,65 +476,214 @@ export class UsersService {
   //=================================
 
   // function to change state of a milestone by provider
-  async changeMilestoneStatus(userId: number, projectId: number, msId: number): Promise<Milestone> {
+  async changeMilestoneStatus(userId: number, projectId: number, msId: number): Promise<{
+    success: boolean, msg: string,
+    status_code: string, ms_status: string
+  }> {
 
-    // find the milestone whose id is msId
-    const milestone = await this.prisma.milestone.findUnique({
-      where: {
-        milestone_id: msId,
-      },
-    });
-    if (!milestone) {
-      throw new Error('Milestone not found');
-    }
-
-
-    // need to get the contract ID of the project to which this milestone belongs
-    // 1 - get the project id of the entered milestone (only if project id is not provided in the api)
-    // const project_id = await this.prisma.milestone.findUnique({
-    //   where: { milestone_id:msId },
-    // });
-
-    // 2- check if any contract id exists for that project
-    const project = await this.prisma.project.findUnique({
-      where: { project_id: projectId },
-      select: { project_contract_id: true },
-    });
-    const contract_id = project?.project_contract_id;
-    console.log(contract_id);
-
-    // change the state of the milestone by calling changeMsState
-    // const msparams = await utils.contractParamsBuilderFcn1(msId);
-    const gasLimit = 10000000;
-    // const addMS_Status = await utils.changeMsState(contract_id, gasLimit, "changeMS_state", msparams , client);
-    const change_ms_status = await utils.changeMsState(contract_id, gasLimit, msId, client);
-    console.log(`\n Change milestone status :${change_ms_status}`);
-    // const gasLimit = 10000000;
-
-
-
-    // get the milestone details
-    console.log(`\n Fetching the milestone details`);
-    const result = await utils.getMS_details('getAllMS', [], 10000000, contract_id, escrowABI, client);
-    console.log(result);
-
-    // push the new state in the db
     try {
+
+      console.log("msid is", msId);
+
+      // find the milestone whose id is msId
+      const milestone = await this.prisma.milestone.findUnique({
+        where: {
+          milestone_id: msId,
+        },
+      });
+
+      // 2- check if any contract id exists for that project
+      const project = await this.prisma.project.findUnique({
+        where: { project_id: projectId },
+        select: { project_contract_id: true },
+      });
+      const contract_id = project?.project_contract_id;
+      console.log(contract_id);
+
+
+      const gasLimit = 10000000;
+      // const addMS_Status = await utils.changeMsState(contract_id, gasLimit, "changeMS_state", msparams , client);
+      const change_ms_status = await utils.changeMsState(contract_id, gasLimit, msId, client);
+      console.log(`\n Change milestone status :${change_ms_status}`);
+
+      // push the new state in the db
       await this.prisma.milestone.update({
         where: { milestone_id: msId },
         data: {
           status: 'Completed',
         },
       });
+
+
+      return { success: true, msg: "Milestone status updated successfully", status_code: "200", ms_status: "Completed" };
+
     } catch (error) {
-      console.error('Failed to update milestone status:', error);
-      throw new Error('Failed to update milestone status');
+      return { success: false, msg: error.message, status_code: "400", ms_status: "Not Updated" };
     }
 
+  }
 
-    return milestone;
+
+  // function to change state of a milestone by provider
+  async approveMilestoneStatus(userId: number, projectId: number, msId: number): Promise<{
+    success: boolean, msg: string,
+    status_code: string, ms_status: string
+  }> {
+
+    try {
+      // find the milestone whose id is msId
+      const milestone = await this.prisma.milestone.findUnique({
+        where: {
+          milestone_id: msId,
+        },
+      });
+      if (!milestone) {
+        throw new Error('Milestone not found');
+      }
+
+      // 2- check if any contract id exists for that project
+      const project = await this.prisma.project.findUnique({
+        where: { project_id: projectId },
+        select: { project_contract_id: true },
+      });
+      const contract_id = project?.project_contract_id;
+      console.log(contract_id);
+
+      const amount = milestone.funds_allocated;
+      const gasLimit = 10000000;
+
+      // Checking bal of contract
+      await utils.showContractBalanceFcn(contract_id, client)
+      // const addMS_Status = await utils.changeMsState(contract_id, gasLimit, "changeMS_state", msparams , client);
+      const approve_ms_status = await utils.approveMsState(contract_id, gasLimit, amount, client);
+      console.log(`\n Change milestone status :${approve_ms_status}`);
+
+
+      // Checking bal of contract
+      await utils.showContractBalanceFcn(contract_id, client)
+
+      return { success: true, msg: "Milestone status approved successfully", status_code: "200", ms_status: "Approved" };;
+    } catch (error) {
+      return { success: false, msg: error.message, status_code: "400", ms_status: "Not Approved" };
+    }
 
   }
+
+
+
+
+
+  //========== NFT functionalities ========
+
+  async createNFT(userId: number, projectId: number): Promise<{
+    success: boolean, msg: string,
+    status_code: string, nft_id: string
+  }> {
+
+    try {
+      //Find all milestones corresponding to project id
+      const milestones = await this.prisma.milestone.findMany({
+        where: {
+          project: {
+            user_id: userId,
+            project_id: projectId,
+          },
+        },
+      });
+
+      if (!milestones) {
+        throw new NotFoundException('Milestones not found');
+      }
+      // Check for all milestone status
+      let no_of_ms = milestones.length;
+      let status_count = 0;
+      for (let i = 0; i < milestones.length; i++) {
+        if (milestones[i].status === 'Completed') {
+          status_count++;
+        }
+      }
+
+
+      const CID = "QmNPCiNA3Dsu3K5FxDPMG5Q3fZRwVTg14EXA92uqEeSRXn";
+      if (status_count == no_of_ms) {
+        // Create NFT with Royalty
+        const nftTokenId = await nft_utils.createNftTokenWithRoyalty(50, providerId, CID, "RaviSat NFT", "RSM", operatorId, adminKey, supplyKey,
+          client, operatorKey);
+        return { success: true, msg: "NFT created successfully", status_code: "200", nft_id: nftTokenId.toString() };
+      }
+      return { success: false, msg: "All milestones are not completed", status_code: "400", nft_id: "NA" };
+    } catch (error) {
+      return { success: false, msg: error.message, status_code: "400", nft_id: "NA" };
+    }
+  }
+
+
+
+  async mintNFT(userId: number, tokenId: string): Promise<{
+    success: boolean, msg: string,
+    status_code: string
+  }> {
+    try {
+      const CID = "QmNPCiNA3Dsu3K5FxDPMG5Q3fZRwVTg14EXA92uqEeSRXn";
+      const mintRx = await nft_utils.tokenMinterFcn(CID, tokenId, client, supplyKey);
+      return { success: false, msg: "NFT minted successfully", status_code: "200" };
+
+    } catch (error) {
+      return { success: false, msg: error.message, status_code: "400" };
+    }
+  }
+
+
+
+  async associateNFT(userId: number, tokenId: string, accountId: string, accountKey: string): Promise<{
+    success: boolean, msg: string,
+    status_code: string
+  }> {
+    try {
+      const account_key = PrivateKey.fromString(accountKey);
+
+      const associateAccRx = await nft_utils.associateAccountWithToken(accountId, tokenId, account_key, client);
+
+      console.log(`- NFT association with account: ${associateAccRx.status}\n`);
+      return { success: false, msg: "NFT associated successfully", status_code: "200" };
+
+    } catch (error) {
+      return { success: false, msg: error.message, status_code: "400" };
+    }
+  }
+
+
+
+  async transferNFT(userId: number, tokenId: string, senderID: string, receiverID: string,serial:number,amount:number,senderKey:string,receiverKey:string): Promise<{
+    success: boolean, msg: string,
+    status_code: string
+  }> {
+    try {
+
+      const receiver_key = PrivateKey.fromString(receiverKey);
+      const sender_key=PrivateKey.fromString(senderKey);
+      //  NFT TRANSFER 
+      let tokenTransferTx2 = await new TransferTransaction()
+        .addNftTransfer(tokenId, serial, senderID, receiverID)
+        .addHbarTransfer(senderID, amount)
+        .addHbarTransfer(receiverID, -amount)
+        .freezeWith(client)
+        .sign(sender_key); 
+      const tokenTransferTx2Sign = await tokenTransferTx2.sign(receiver_key);
+      let tokenTransferSubmit2 = await tokenTransferTx2Sign.execute(client);
+      let tokenTransferRx2 = await tokenTransferSubmit2.getReceipt(client);
+      console.log(
+        `\n NFT transfer sender->receiver with status: ${tokenTransferRx2.status} \n`
+      );
+      return { success: false, msg: "NFT transferred successfully", status_code: "200" };
+
+    } catch (error) {
+      return { success: false, msg: error.message, status_code: "400" };
+    }
+  }
+
+
+
 
 }
 

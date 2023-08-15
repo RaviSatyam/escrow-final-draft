@@ -533,6 +533,68 @@ const contractExecuteRx = await contractExecuteSubmit.getReceipt(client);
 console.log(`- Contract function call status: ${contractExecuteRx.status} \n`);
 return contractExecuteRx.status;
 }
+
+
+
+// calling approve milestone state function
+async function approveMsState(contractId, gasLim, id, client){
+  const contractExecuteTx = new ContractExecuteTransaction()
+  .setContractId(contractId)
+  .setGas(gasLim)
+  .setFunction(
+    "payout",
+    new ContractFunctionParameters().addInt256(id)
+  );
+const contractExecuteSubmit = await contractExecuteTx.execute(client);
+const contractExecuteRx = await contractExecuteSubmit.getReceipt(client);
+// console.log("The transaction status is " +receipt2.status.toString());
+console.log(`- Contract function call status: ${contractExecuteRx.status} \n`);
+return contractExecuteRx.status;
+}
+
+
+// Function to lock fund
+async function contractExecuteNoFcn(cId, gasLim, amountHbar,client) {
+  const contractExecuteTx = new ContractExecuteTransaction()
+      .setContractId(cId)
+      .setGas(gasLim)
+      .setPayableAmount(amountHbar);
+  const contractExecuteSubmit = await contractExecuteTx.execute(client);
+  const contractExecuteRx = await contractExecuteSubmit.getReceipt(client);
+  return contractExecuteRx;
+}
+
+
+
+async function showContractBalanceFcn(cId,client) {
+  const info = await new ContractInfoQuery().setContractId(cId).execute(client);
+  console.log(`- Contract balance : ${info.balance.toString()}`);
+}
+
+
+async function contractCallQueryFcn(cId, gasLim, fcnName,client) {
+  const contractQueryTx = new ContractCallQuery()
+      .setContractId(cId)
+      .setGas(gasLim)
+      .setFunction(fcnName);
+  const contractQuerySubmit = await contractQueryTx.execute(client);
+  const contractQueryResult = contractQuerySubmit.getUint256(0);
+  console.log(`- Contract balance (getBalance fcn): ${contractQueryResult * 1e-8} ℏ`); 
+}
+
+
+async function hbarTransferFcn(purchaserId, contractAddress,purchaserPvKey,amount,client) {
+  const transferTx = new TransferTransaction()
+      .addHbarTransfer(purchaserId, new Hbar(-amount))
+      .addHbarTransfer(contractAddress, new Hbar(amount))
+      .freezeWith(client);
+  const transferSign = await transferTx.sign(purchaserPvKey);
+  const transferSubmit = await transferSign.execute(client);
+  const transferRx = await transferSubmit.getReceipt(client);
+  return transferRx;
+}
+
+
   
   
   
@@ -547,4 +609,5 @@ return contractExecuteRx.status;
 
 module.exports={createByteCodeFileId,createContractFactoryContractId,contractParamsBuilderFcnMS,contractExecuteFcn,
     contractParamsBuilderFcn,addMS_details,getMS_details,contractParamsBuilderMS,callFunction,contractParamsBuilderEscroContract,
-    createEscrowContractId,saveDataToFile,readVariableFromFile,updateVariableValue,changeMsState}
+    createEscrowContractId,saveDataToFile,readVariableFromFile,updateVariableValue,changeMsState,approveMsState,
+    contractExecuteNoFcn,showContractBalanceFcn,contractCallQueryFcn,hbarTransferFcn}

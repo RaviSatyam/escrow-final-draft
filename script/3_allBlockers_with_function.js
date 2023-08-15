@@ -33,8 +33,6 @@ async function main() {
     console.log('At index 0');
     console.log(result1[0]);
 
-    
-
 }
 main();
 
