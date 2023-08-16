@@ -556,7 +556,7 @@ export class UsersService {
       await utils.showContractBalanceFcn(contract_id, client)
       // const addMS_Status = await utils.changeMsState(contract_id, gasLimit, "changeMS_state", msparams , client);
       const approve_ms_status = await utils.approveMsState(contract_id, gasLimit, amount, client);
-      console.log(`\n Change milestone status :${approve_ms_status}`);
+      console.log(`\n Approve milestone status :${approve_ms_status}`);
 
 
       // Checking bal of contract
@@ -660,6 +660,17 @@ export class UsersService {
   }> {
     try {
 
+      // Balance check-1
+    let balPurchaser=await nft_utils.balCheckerFcn(operatorId,tokenId,client);
+    let balProvider=await nft_utils.balCheckerFcn(providerId,tokenId,client);
+    let balThirdPerson=await nft_utils.balCheckerFcn(thirdPersonId,tokenId,client);
+    let balFourthPerson=await nft_utils.balCheckerFcn(fourthPersonId,tokenId,client);
+
+    console.log(`- Purchaser balance: ${balPurchaser[0]} NFTs of ID:${tokenId} and ${balPurchaser[1]}`);
+    console.log(`- Provider balance: ${balProvider[0]} NFTs of ID:${tokenId} and ${balProvider[1]}`);
+    console.log(`- Third Person balance: ${balThirdPerson[0]} NFTs of ID:${tokenId} and ${balThirdPerson[1]}`);
+    console.log(`- Fourth Person balance: ${balFourthPerson[0]} NFTs of ID:${tokenId} and ${balFourthPerson[1]}`);
+
       const receiver_key = PrivateKey.fromString(receiverKey);
       const sender_key=PrivateKey.fromString(senderKey);
       //  NFT TRANSFER 
@@ -675,6 +686,19 @@ export class UsersService {
       console.log(
         `\n NFT transfer sender->receiver with status: ${tokenTransferRx2.status} \n`
       );
+
+
+      // Balance check-2
+     balPurchaser=await nft_utils.balCheckerFcn(operatorId,tokenId,client);
+     balProvider=await nft_utils.balCheckerFcn(providerId,tokenId,client);
+     balThirdPerson=await nft_utils.balCheckerFcn(thirdPersonId,tokenId,client);
+     balFourthPerson=await nft_utils.balCheckerFcn(fourthPersonId,tokenId,client);
+
+    console.log(`- Purchaser balance: ${balPurchaser[0]} NFTs of ID:${tokenId} and ${balPurchaser[1]}`);
+    console.log(`- Provider balance: ${balProvider[0]} NFTs of ID:${tokenId} and ${balProvider[1]}`);
+    console.log(`- Third Person balance: ${balThirdPerson[0]} NFTs of ID:${tokenId} and ${balThirdPerson[1]}`);
+    console.log(`- Fourth Person balance: ${balFourthPerson[0]} NFTs of ID:${tokenId} and ${balFourthPerson[1]}`);
+
       return { success: false, msg: "NFT transferred successfully", status_code: "200" };
 
     } catch (error) {
